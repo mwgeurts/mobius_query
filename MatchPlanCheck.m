@@ -1,5 +1,5 @@
-function [session, plan] = FindPlanCheck(varargin)
-% FindPlanCheck searches through the Mobius3D server for a plan check.
+function [session, plan] = MatchPlanCheck(varargin)
+% MatchPlanCheck searches through the Mobius3D server for a plan check.
 % The function can search on patient ID and plan name or a date range. The
 % patient list can be pre-loaded by executing QueryPatientList and then
 % passed to this function to improve speed.
@@ -23,7 +23,7 @@ function [session, plan] = FindPlanCheck(varargin)
 %       session);
 %   
 %   % Search for patient ID 123456 and plan name 'VMAT'
-%   [session, plan] = FindPlanCheck('server', '10.105.1.12', 'session', ...
+%   [session, plan] = MatchPlanCheck('server', '10.105.1.12', 'session', ...
 %       session, 'list', list, 'id', '123456', 'plan', 'VMAT');
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
