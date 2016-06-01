@@ -9,7 +9,7 @@ function session = EstablishConnection(varargin)
 %
 % The following variables are required for proper execution: 
 %   varargin: cell array of strings, with odd indices of 'server', 'user',
-%       or 'pass' followed by a string containing the server name/IP,
+%       and 'pass' followed by a string containing the server name/IP,
 %       username, and password, respectively.
 %
 % The following variables are returned upon succesful completion:
