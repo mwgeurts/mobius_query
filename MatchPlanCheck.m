@@ -1,4 +1,4 @@
-function [session, plan] = MatchPlanCheck(varargin)
+function [session, check] = MatchPlanCheck(varargin)
 % MatchPlanCheck searches through the Mobius3D server for a plan check.
 % The function can search on patient ID and plan name or a date range. The
 % patient list can be pre-loaded by executing QueryPatientList and then
@@ -12,7 +12,7 @@ function [session, plan] = MatchPlanCheck(varargin)
 %
 % The following variables are returned upon succesful completion:
 %   session: Python session object
-%   plan: structure containing the plan check details
+%   check: structure containing the plan check details
 %
 % Below is an example of how the function is used:
 %
@@ -23,7 +23,7 @@ function [session, plan] = MatchPlanCheck(varargin)
 %       session);
 %   
 %   % Search for patient ID 123456 and plan name 'VMAT'
-%   [session, plan] = MatchPlanCheck('server', '10.105.1.12', 'session', ...
+%   [session, check] = MatchPlanCheck('server', '10.105.1.12', 'session', ...
 %       session, 'list', list, 'id', '123456', 'plan', 'VMAT');
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
@@ -50,7 +50,7 @@ list = [];
 
 % Initialize patient variables
 id = [];
-plan = [];
+check = [];
 date = [];
 
 % Set default range to accept matched dates, in hours
@@ -77,7 +77,7 @@ for i = 1:2:nargin
     elseif strcmpi(varargin{i}, 'id')
         id = varargin{i+1};
     elseif strcmpi(varargin{i}, 'plan')
-        plan = varargin{i+1};
+        check = varargin{i+1};
     elseif strcmpi(varargin{i}, 'date')
         if isdatetime(varargin{i+1})
             date = datenum(varargin{i+1});
@@ -108,7 +108,7 @@ if exist('server', 'var') == 0 || isempty(server) || ...
 end
 
 % If the patient variable are insufficient, throw an error
-if isempty(id) || (isempty(plan) && isempty(date))
+if isempty(id) || (isempty(check) && isempty(date))
     
     % Log error
     if exist('Event', 'file') == 2
@@ -120,11 +120,11 @@ if isempty(id) || (isempty(plan) && isempty(date))
     end 
 
 % If a patient and plan was provided
-elseif ~isempty(id) && ~isempty(plan)
+elseif ~isempty(id) && ~isempty(check)
 
     % Log start
     if exist('Event', 'file') == 2
-        Event(['Searching Mobius3D for patient ', id, ' plan ', plan]);
+        Event(['Searching Mobius3D for patient ', id, ' plan ', check]);
         tic;
     end
     
@@ -210,7 +210,7 @@ for i = 1:length(list)
     if strcmp(char(list{i}.patientId), id)
         
         % If a plan name or date was provided
-        if ~isempty(plan) || ~isempty(date)
+        if ~isempty(check) || ~isempty(date)
 
             % Loop over every plan in the patient
             for j = 1:length(list{i}.plans)
@@ -226,8 +226,8 @@ for i = 1:length(list)
 
                 % If this plan matches the plan check name (in the notes 
                 % field), or if the plan date is within the allowed range
-                if (~isempty(plan) && strcmpi(char(list{i}.plans{j}.notes), ...
-                        plan)) || (~isempty(date) && d > (date - range) ...
+                if (~isempty(check) && strcmpi(char(list{i}.plans{j}.notes), ...
+                        check)) || (~isempty(date) && d > (date - range) ...
                         && d < (date + range))
 
                     % Log match
@@ -248,7 +248,7 @@ for i = 1:length(list)
                     end
 
                     % Retrieve JSON plan data
-                    plan = loadjson(char(py.json.dumps(data)));
+                    check = loadjson(char(py.json.dumps(data)));
 
                     % End loop, as matching plan check was found
                     break;
@@ -262,7 +262,7 @@ for i = 1:length(list)
 end
 
 % Check if an empty structure was returned
-if ~isempty(fieldnames(plan))
+if ~isempty(fieldnames(check))
 
     % Log success
     if exist('Event', 'file') == 2
@@ -281,7 +281,7 @@ else
     end
 
     % Clear return variable
-    plan = [];
+    check = [];
 end
 
 % Clear temporary variables
