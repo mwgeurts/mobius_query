@@ -163,11 +163,11 @@ if isempty(list)
 
         % Execute get function of Python session object to retrieve list of 
         % patients from Mobius3D
-        result = session.get(['http://', server, ...
+        r = session.get(['http://', server, ...
             '/_plan/list?sort=date&descending=1&limit=999999']);
 
         % Retrieve the JSON results
-        j = result.json();
+        j = r.json();
 
         % Execute loadjson() to convert the JSON list to a MATLAB structure
         s = loadjson(char(py.json.dumps(j)));
@@ -285,4 +285,4 @@ else
 end
 
 % Clear temporary variables
-clear date id list range server utc result data i j s r d;
+clear date id list range server utc data i j s r d;

@@ -14,8 +14,8 @@ function [session, list] = QueryDICOMList(varargin)
 %
 % The following variables are returned upon succesful completion:
 %   session: Python session object
-%   list: cell array of structures containing css_id, patient_name, and
-%       patient_id fields
+%   list: cell array of structures containing 'css_id', 'patient_name', and
+%       'patient_id' fields
 %
 % Below is an example of how the function is used:
 %
@@ -98,10 +98,10 @@ try
     
     % Execute get function of Python session object to retrieve list of 
     % DICOM patients from Mobius3D
-    result = session.get(['http://', server, '/_dicom/patients']);
+    r = session.get(['http://', server, '/_dicom/patients']);
 
     % Retrieve the JSON results
-    j = result.json();
+    j = r.json();
     
     % Execute loadjson() to convert the JSON list to a MATLAB structure
     s = loadjson(char(py.json.dumps(j)));
@@ -139,4 +139,4 @@ catch
 end
 
 % Clear temporary variables
-clear server result j s;
+clear r j s i;

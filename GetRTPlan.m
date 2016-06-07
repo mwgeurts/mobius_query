@@ -156,4 +156,4 @@ catch
 end
 
 % Clear temporary variables
-clear sop r;
+clear sop r i;

@@ -76,15 +76,12 @@ end
 % Verify Python can be executed
 try
     % Execute the Python version function
-    version = py.sys.version;
+    v = py.sys.version;
     
     % Log the Python version
     if exist('Event', 'file') == 2
-        Event(['MATLAB is configured to use Python ', char(version)]);
+        Event(['MATLAB is configured to use Python ', char(v)]);
     end    
-    
-    % Clear temporary variables
-    clear version;
     
 % If a error occurs, Python is most likely not installed
 catch
@@ -144,3 +141,6 @@ catch
             'network connection and credentials.']);
     end
 end
+
+% Clear temporary variables
+clear v i;
