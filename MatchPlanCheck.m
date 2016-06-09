@@ -77,7 +77,7 @@ for i = 1:2:nargin
     elseif strcmpi(varargin{i}, 'id')
         id = varargin{i+1};
     elseif strcmpi(varargin{i}, 'plan')
-        check = varargin{i+1};
+        plan = varargin{i+1};
     elseif strcmpi(varargin{i}, 'date')
         if isdatetime(varargin{i+1})
             date = datenum(varargin{i+1});
@@ -108,7 +108,7 @@ if exist('server', 'var') == 0 || isempty(server) || ...
 end
 
 % If the patient variable are insufficient, throw an error
-if isempty(id) || (isempty(check) && isempty(date))
+if isempty(id) || (isempty(plan) && isempty(date))
     
     % Log error
     if exist('Event', 'file') == 2
@@ -120,11 +120,11 @@ if isempty(id) || (isempty(check) && isempty(date))
     end 
 
 % If a patient and plan was provided
-elseif ~isempty(id) && ~isempty(check)
+elseif ~isempty(id) && ~isempty(plan)
 
     % Log start
     if exist('Event', 'file') == 2
-        Event(['Searching Mobius3D for patient ', id, ' plan ', check]);
+        Event(['Searching Mobius3D for patient ', id, ' plan ', plan]);
         tic;
     end
     
@@ -206,11 +206,17 @@ end
 % Loop through patient list
 for i = 1:length(list)
     
+    % Check if list item is empty, and skip if so
+    if isempty(list{i}) || ~isstruct(list{i}) || ...
+            ~isfield(list{i}, 'patientId')
+        continue;
+    end
+    
     % If patient ID matches
     if strcmp(char(list{i}.patientId), id)
         
         % If a plan name or date was provided
-        if ~isempty(check) || ~isempty(date)
+        if ~isempty(plan) || ~isempty(date)
 
             % Loop over every plan in the patient
             for j = 1:length(list{i}.plans)
@@ -226,8 +232,8 @@ for i = 1:length(list)
 
                 % If this plan matches the plan check name (in the notes 
                 % field), or if the plan date is within the allowed range
-                if (~isempty(check) && strcmpi(char(list{i}.plans{j}.notes), ...
-                        check)) || (~isempty(date) && d > (date - range) ...
+                if (~isempty(plan) && strcmpi(char(list{i}.plans{j}.notes), ...
+                        plan)) || (~isempty(date) && d > (date - range) ...
                         && d < (date + range))
 
                     % Log match
