@@ -50,7 +50,7 @@ list = [];
 
 % Initialize patient variables
 id = [];
-check = [];
+plan = [];
 date = [];
 
 % Set default range to accept matched dates, in hours
@@ -227,8 +227,8 @@ for i = 1:length(list)
                 end
 
                 % Calculate MATLAB datenum of plan
-                d = str2double(list{i}.plans{j}.created_timestamp) ...
-                    / 86400 + datenum(1970,1,1,utc,0,0);
+                d = list{i}.plans{j}.created_timestamp / 86400 ...
+                    + datenum(1970,1,1,utc,0,0);
 
                 % If this plan matches the plan check name (in the notes 
                 % field), or if the plan date is within the allowed range
@@ -268,7 +268,7 @@ for i = 1:length(list)
 end
 
 % Check if an empty structure was returned
-if ~isempty(fieldnames(check))
+if exist('check', 'var') == 1 && ~isempty(fieldnames(check))
 
     % Log success
     if exist('Event', 'file') == 2
