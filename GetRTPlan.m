@@ -139,19 +139,34 @@ try
         Event('Parsing JSON into MATLAB structure return argument');
     end
 
-    % Replace all tag names with their Group/Element codes, using the
-    % format GXXXXEXXXX, and convert to MATLAB structure
-    rtplan = loadjson(regexprep(char(py.json.dumps(r.json())), ...
-        '"\(([0-9a-z]+), ([0-9a-z]+)\)[^"]+"', '"G$1E$2"'));
-
 % Otherwise, if an error occurred, a connection was not successful
 catch
     
     % Log an error
     if exist('Event', 'file') == 2
-        Event(['The request to ', server, ' failed.'], 'ERROR');
+        Event(['The request to ', server, ' failed'], 'ERROR');
     else
-        error(['The request to ', server, ' failed.']);
+        error(['The request to ', server, ' failed']);
+    end
+end
+
+% If a valid RT plan object was returned
+if length(char(py.json.dumps(r.json()))) > 2
+
+    % Replace all tag names with their Group/Element codes, using the
+    % format GXXXXEXXXX, and convert to MATLAB structure
+    rtplan = loadjson(regexprep(char(py.json.dumps(r.json())), ...
+        '"\(([0-9a-z]+), ([0-9a-z]+)\)[^"]+"', '"G$1E$2"'));
+else
+    
+    % Return empty rtplan
+    rtplan = [];
+    
+    % Log an error
+    if exist('Event', 'file') == 2
+        Event('The returned RT Plan object is empty', 'WARN');
+    else
+        warning('The returned RT Plan object is empty');
     end
 end
 
