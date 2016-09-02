@@ -247,9 +247,8 @@ for i = 1:length(list)
                         '?format=json']);
                     data = r.json();
 
-                    % Only get data for M3D v1.2 plans and later
-                    if data{'version'}{1} < 1 || ...
-                            data{'version'}{2} < 2
+                    % Only get data for M3D v1 plans and later
+                    if data{'version'}{1} < 1
                         continue
                     end
 
