@@ -2,7 +2,7 @@ function [session, list] = GetAnonymizedDICOM(varargin)
 % GetAnonymizedDICOM downloads anonymized DICOM files for a patient list
 % incuding CT, RT Structure Set, RT Plan, and RT Dose files. The function 
 % requires an active Python session, created from EstablishConnection, a 
-% server name, list of css IDs (this list can be generated from
+% server name, list of patient IDs (this list can be generated from
 % QueryDICOMList), and destination folder, which can be either a relative 
 % or absolute path. The DICOM files will be unzipped and saved to the 
 % destination folder in a unqiue subfolder generated from the Mobius3D
@@ -95,11 +95,11 @@ if exist('list', 'var') == 0 || isempty(list)
     % Log error
     if exist('Event', 'file') == 2
         Event(['List input is missing. You must provide a cell array of ', ...
-            'structures containing css_id fields to this function.'], ...
+            'structures containing patient_id fields to this function.'], ...
             'ERROR');
     else
         error(['List input is missing. You must provide a cell array of ', ...
-            'structures containing css_id fields to this function.']);
+            'structures containing patient_id fields to this function.']);
     end 
 end
 
@@ -136,37 +136,43 @@ end
 % Loop through each list item
 for i = 1:length(list)
 
-    % If a css_id field does not exist, warn the user
-    if ~isfield(list{i}, 'css_id')
+    % If a patient_id field does not exist, warn the user
+    if ~isfield(list{i}, 'patient_id')
 
         % Throw a warning
         if exist('Event', 'file') == 2
-            Event(sprintf(['List item %i is missing a css_id field ', ...
+            Event(sprintf(['List item %i is missing a patient_id field ', ...
                 'and was skipped'], i), 'WARN');
         else
-            warning(['List item %i is missing a css_id field ', ...
+            warning(['List item %i is missing a patient_id field ', ...
                 'and was skipped'], i);
         end
 
         % Skip to the next list item
         continue;
     end
+    
+    % Log parsing
+    if exist('Event', 'file') == 2
+        Event(['Creating anonymized compressed file for ', ...
+            list{i}.patient_id]);
+    end
 
     % Execute get function of Python session object to initiate the 
     % DICOM anonymization function in Mobius3D
     try
         r = session.get(['http://', server, '/_dicom/anon/create/', ...
-            list{i}.css_id]);
+            list{i}.patient_id]);
     catch
 
         % If get fails, throw a warning
         if exist('Event', 'file') == 2
             Event(sprintf(['Mobius3D could not generate DICOM files for ', ...
-                '%s, or the server is unavailable.'], list{i}.css_id), ...
+                '%s, or the server is unavailable.'], list{i}.patient_id), ...
                 'WARN');
         else
             warning(['Mobius3D could not generate DICOM files for ', ...
-                '%s, or the server is unavailable.'], list{i}.css_id);
+                '%s, or the server is unavailable.'], list{i}.patient_id);
         end
 
         % Skip to the next list item
@@ -210,12 +216,23 @@ for i = 1:length(list)
         % Create a Python file handle to the temp file
         f = py.open(t, 'wb');
         
+        % Log parsing
+        if exist('Event', 'file') == 2
+            Event(['Downloading compressed file for ', list{i}.patient_id, ...
+                ' to ', t]);
+        end
+        
         % Download the .zip file from the Mobius3D server to the temp file
         f.write(session.get(['http://', server, ...
             '/_dicom/anon/download/', s.file_str]).content);
         
         % Close the temporary file
         f.close();
+        
+        % Log parsing
+        if exist('Event', 'file') == 2
+            Event(['Uncompressing ', t, ' to ', folder]);
+        end
         
         % Unzip the temp file into the destination folder, storing the
         % unzipped file names
