@@ -158,60 +158,8 @@ try
         
         % Log query
         if exist('Event', 'file') == 2
-            Event(sprintf('Retrieving SOP instances for %s (%i/%i)', ...
+            Event(sprintf('Retrieving RTPLAN instances for %s (%i/%i)', ...
                 ulist{i}.patient_name, i, length(list)));
-        end
-        
-        % Query CT series
-        r = session.get(['http://', server, '/_dicom/series/', ...
-            ulist{i}.patient_id, '/CT']);
-
-        % Retrieve the JSON results
-        j = r.json();
-       
-        % Convert to MATLAB structure
-        ulist{i}.ct = regexp(char(py.json.dumps(j)), ...
-            '"([^"]+)": ([0-9]+)', 'tokens');            
-        
-        % Loop through CT series
-        for j = 1:length(ulist{i}.ct)
-            
-            % Query SOP instance UIDs
-            r = session.get(['http://', server, '/_dicom/sopinsts/', ...
-                ulist{i}.patient_id, '/CT/', ulist{i}.ct{j}{1}]);
-
-            % Retrieve the JSON results
-            k = r.json();
-            
-            % Convert to MATLAB structure
-            ulist{i}.ct{j}{3} = regexp(char(py.json.dumps(k)), ...
-                '"([0-9\.]+)"', 'tokens'); 
-        end
-
-        % Query RTDOSE series
-        r = session.get(['http://', server, '/_dicom/series/', ...
-            ulist{i}.patient_id, '/RTDOSE']);
-
-        % Retrieve the JSON results
-        j = r.json();
-
-        % Convert to MATLAB structure
-        ulist{i}.rtdose = regexp(char(py.json.dumps(j)), ...
-            '"([^"]+)": ([0-9]+)', 'tokens');
-        
-        % Loop through RTDOSE series
-        for j = 1:length(ulist{i}.rtdose)
-            
-            % Query SOP instance UIDs
-            r = session.get(['http://', server, '/_dicom/sopinsts/', ...
-                ulist{i}.patient_id, '/RTDOSE/', ulist{i}.rtdose{j}{1}]);
-
-            % Retrieve the JSON results
-            k = r.json();
-            
-            % Convert to MATLAB structure
-            ulist{i}.rtdose{j}{3} = regexp(char(py.json.dumps(k)), ...
-                '"([0-9\.]+)"', 'tokens'); 
         end
         
         % Query RTPLAN series
@@ -237,32 +185,6 @@ try
             
             % Convert to MATLAB structure
             ulist{i}.rtplan{j}{3} = regexp(char(py.json.dumps(k)), ...
-                '"([0-9\.]+)"', 'tokens'); 
-        end
-        
-        % Query RTSTRUCT series
-        r = session.get(['http://', server, '/_dicom/series/', ...
-            ulist{i}.patient_id, '/RTSTRUCT']);
-
-        % Retrieve the JSON results
-        j = r.json();
-
-        % Convert to MATLAB structure
-        ulist{i}.rtstruct = regexp(char(py.json.dumps(j)), ...
-            '"([^"]+)": ([0-9]+)', 'tokens');  
-        
-        % Loop through RTSTRUCT series
-        for j = 1:length(ulist{i}.rtstruct)
-            
-            % Query SOP instance UIDs
-            r = session.get(['http://', server, '/_dicom/sopinsts/', ...
-                ulist{i}.patient_id, '/RTSTRUCT/', ulist{i}.rtstruct{j}{1}]);
-
-            % Retrieve the JSON results
-            k = r.json();
-            
-            % Convert to MATLAB structure
-            ulist{i}.rtstruct{j}{3} = regexp(char(py.json.dumps(k)), ...
                 '"([0-9\.]+)"', 'tokens'); 
         end
     end
