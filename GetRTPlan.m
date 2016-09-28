@@ -21,14 +21,10 @@ function [session, rtplan] = GetRTPlan(varargin)
 %   % Connect to Mobius3D server and retrieve list of DICOM data
 %   session = EstablishConnection('server', '10.105.1.12', 'user', ...
 %       'guest', 'pass', 'guest');
-%   
-%   % Search for plan check
-%   [session, check] = MatchPlanCheck('server', '10.105.1.12', 'session', ...
-%       session, 'id', '123456', 'plan', 'VMAT');
 %
 %   % Retrieve RT plan for matched plan check
 %   [session, rtplan] = GetRTPlan('server', '10.105.1.12', 'session', ...
-%       session, 'plan', plan);
+%       session, 'sopinst', 'plansopuid');
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
 % Copyright (C) 2016 University of Wisconsin Board of Regents
