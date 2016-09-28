@@ -153,12 +153,13 @@ try
         ulist{i}.css_id = list{indices(i)}.css_id;
     end
     
-    % Loop through plans, retrieving number of files
+    % Loop through plans, retrieving SOP instances
     for i = 1:length(list)
         
         % Log query
         if exist('Event', 'file') == 2
-            Event(['Retrieving SOP instances for ', ulist{i}.patient_name]);
+            Event(sprintf('Retrieving SOP instances for %s (%i/%i)', ...
+                ulist{i}.patient_name, i, length(list)));
         end
         
         % Query CT series
