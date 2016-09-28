@@ -1,4 +1,4 @@
-function [session, list] = QueryDICOMList(varargin)
+function [session, ulist] = QueryDICOMList(varargin)
 % QueryDICOMList returns the list of DICOM patient data stored in Mobius3D.
 % The function requires an active Python session, created from
 % EstablishConnection, and a server name. It will then query the Mobius3D
@@ -15,7 +15,9 @@ function [session, list] = QueryDICOMList(varargin)
 % The following variables are returned upon succesful completion:
 %   session: Python session object
 %   list: cell array of structures containing 'css_id', 'patient_name', 
-%       'patient_id', 'ct', 'rtdose', 'rtplan', and 'rtstruct' fields
+%       'patient_id', 'ct', 'rtdose', 'rtplan', and 'rtstruct' fields. The
+%       SOP instance of each ct, rtdose, rtplan, and rtstruct are stored 
+%       as ct{j}{3},rtdose{j}{3}, etc.
 %
 % Below is an example of how the function is used:
 %
@@ -126,133 +128,140 @@ try
         end
     end
     
+    % Initialize temporary cell array of patient IDs
+    t = cell(length(list), 1);
+    
+    % Loop through list
+    for i = 1:length(list)
+        
+        % Store patient ID
+        t{i} = list{i}.patient_id;
+    end
+    
+    % Find indices of unique patient IDs
+    [~, indices, ~] = unique(t);
+    
+    % Create unique list
+    ulist = cell(length(indices), 1);
+    
+    % Store unique values
+    for i = 1:length(indices)
+        
+        % Store patient ID, name, and CSS ID
+        ulist{i}.patient_id = list{indices(i)}.patient_id;
+        ulist{i}.patient_name = list{indices(i)}.patient_name;
+        ulist{i}.css_id = list{indices(i)}.css_id;
+    end
+    
     % Loop through plans, retrieving number of files
     for i = 1:length(list)
         
         % Log query
         if exist('Event', 'file') == 2
-            Event(['Retrieving CT instances for ', list{i}.patient_id]);
+            Event(['Retrieving SOP instances for ', ulist{i}.patient_name]);
         end
         
         % Query CT series
         r = session.get(['http://', server, '/_dicom/series/', ...
-            list{i}.patient_id, '/CT']);
+            ulist{i}.patient_id, '/CT']);
 
         % Retrieve the JSON results
         j = r.json();
        
         % Convert to MATLAB structure
-        list{i}.ct = regexp(char(py.json.dumps(j)), ...
+        ulist{i}.ct = regexp(char(py.json.dumps(j)), ...
             '"([^"]+)": ([0-9]+)', 'tokens');            
         
         % Loop through CT series
-        for j = 1:length(list{i}.ct)
+        for j = 1:length(ulist{i}.ct)
             
             % Query SOP instance UIDs
             r = session.get(['http://', server, '/_dicom/sopinsts/', ...
-                list{i}.patient_id, '/CT/', list{i}.ct{j}{1}]);
+                ulist{i}.patient_id, '/CT/', ulist{i}.ct{j}{1}]);
 
             % Retrieve the JSON results
             k = r.json();
             
             % Convert to MATLAB structure
-            list{i}.ct{j}{3} = regexp(char(py.json.dumps(k)), ...
+            ulist{i}.ct{j}{3} = regexp(char(py.json.dumps(k)), ...
                 '"([0-9\.]+)"', 'tokens'); 
-        end
-        
-        % Log query
-        if exist('Event', 'file') == 2
-            Event(['Retrieving RTDOSE instances for ', ...
-                list{i}.patient_id]);
         end
 
         % Query RTDOSE series
         r = session.get(['http://', server, '/_dicom/series/', ...
-            list{i}.patient_id, '/RTDOSE']);
+            ulist{i}.patient_id, '/RTDOSE']);
 
         % Retrieve the JSON results
         j = r.json();
 
         % Convert to MATLAB structure
-        list{i}.rtdose = regexp(char(py.json.dumps(j)), ...
+        ulist{i}.rtdose = regexp(char(py.json.dumps(j)), ...
             '"([^"]+)": ([0-9]+)', 'tokens');
         
         % Loop through RTDOSE series
-        for j = 1:length(list{i}.rtdose)
+        for j = 1:length(ulist{i}.rtdose)
             
             % Query SOP instance UIDs
             r = session.get(['http://', server, '/_dicom/sopinsts/', ...
-                list{i}.patient_id, '/RTDOSE/', list{i}.rtdose{j}{1}]);
+                ulist{i}.patient_id, '/RTDOSE/', ulist{i}.rtdose{j}{1}]);
 
             % Retrieve the JSON results
             k = r.json();
             
             % Convert to MATLAB structure
-            list{i}.rtdose{j}{3} = regexp(char(py.json.dumps(k)), ...
+            ulist{i}.rtdose{j}{3} = regexp(char(py.json.dumps(k)), ...
                 '"([0-9\.]+)"', 'tokens'); 
-        end
-        
-        % Log query
-        if exist('Event', 'file') == 2
-            Event(['Retrieving RTPLAN instances for ', ...
-                list{i}.patient_id]);
         end
         
         % Query RTPLAN series
         r = session.get(['http://', server, '/_dicom/series/', ...
-            list{i}.patient_id, '/RTPLAN']);
+            ulist{i}.patient_id, '/RTPLAN']);
 
         % Retrieve the JSON results
         j = r.json();
 
         % Convert to MATLAB structure
-        list{i}.rtplan = regexp(char(py.json.dumps(j)), ...
+        ulist{i}.rtplan = regexp(char(py.json.dumps(j)), ...
             '"([^"]+)": ([0-9]+)', 'tokens');  
         
         % Loop through RTPLAN series
-        for j = 1:length(list{i}.rtplan)
+        for j = 1:length(ulist{i}.rtplan)
             
             % Query SOP instance UIDs
             r = session.get(['http://', server, '/_dicom/sopinsts/', ...
-                list{i}.patient_id, '/RTPLAN/', list{i}.rtplan{j}{1}]);
+                ulist{i}.patient_id, '/RTPLAN/', ulist{i}.rtplan{j}{1}]);
 
             % Retrieve the JSON results
             k = r.json();
             
             % Convert to MATLAB structure
-            list{i}.rtplan{j}{3} = regexp(char(py.json.dumps(k)), ...
+            ulist{i}.rtplan{j}{3} = regexp(char(py.json.dumps(k)), ...
                 '"([0-9\.]+)"', 'tokens'); 
-        end
-        
-        % Log query
-        if exist('Event', 'file') == 2
-            Event(['Retrieving RTSTRUCT instances for ', ...
-                list{i}.patient_id]);
         end
         
         % Query RTSTRUCT series
         r = session.get(['http://', server, '/_dicom/series/', ...
-            list{i}.patient_id, '/RTSTRUCT']);
+            ulist{i}.patient_id, '/RTSTRUCT']);
 
         % Retrieve the JSON results
         j = r.json();
 
         % Convert to MATLAB structure
-        list{i}.rtstruct = regexp(char(py.json.dumps(j)), ...
+        ulist{i}.rtstruct = regexp(char(py.json.dumps(j)), ...
             '"([^"]+)": ([0-9]+)', 'tokens');  
         
         % Loop through RTSTRUCT series
-        for j = 1:length(list{i}.rtstruct)
+        for j = 1:length(ulist{i}.rtstruct)
             
             % Query SOP instance UIDs
             r = session.get(['http://', server, '/_dicom/sopinsts/', ...
-                list{i}.patient_id, '/RTSTRUCT/', list{i}.rtstruct{j}{1}]);
+                ulist{i}.patient_id, '/RTSTRUCT/', ulist{i}.rtstruct{j}{1}]);
 
             % Retrieve the JSON results
             k = r.json();
             
             % Convert to MATLAB structure
-            list{i}.rtstruct{j}{3} = regexp(char(py.json.dumps(k)), ...
+            ulist{i}.rtstruct{j}{3} = regexp(char(py.json.dumps(k)), ...
                 '"([0-9\.]+)"', 'tokens'); 
         end
     end
@@ -260,7 +269,7 @@ try
     % If the above function calls work, log a success message
     if exist('Event', 'file') == 2
         Event(sprintf(['DICOM list retrieved successfully containing %i ', ...
-            'entries in %0.3f seconds'], length(list), toc));
+            'entries in %0.3f seconds'], length(ulist), toc));
     end
 
 % Otherwise, if an error occurred, a connection was not successful
@@ -275,4 +284,4 @@ catch
 end
 
 % Clear temporary variables
-clear r j s i k t;
+clear r j s i k t indices list;
