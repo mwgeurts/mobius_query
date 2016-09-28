@@ -151,42 +151,6 @@ try
         ulist{i}.css_id = list{indices(i)}.css_id;
     end
     
-    % Loop through plans, retrieving SOP instances
-    for i = 1:length(ulist)
-        
-        % Log query
-        if exist('Event', 'file') == 2
-            Event(sprintf('Retrieving RTPLAN instances for %s (%i/%i)', ...
-                ulist{i}.patient_name, i, length(ulist)));
-        end
-        
-        % Query RTPLAN series
-        r = session.get(['http://', server, '/_dicom/series/', ...
-            ulist{i}.patient_id, '/RTPLAN']);
-
-        % Retrieve the JSON results
-        j = r.json();
-
-        % Convert to MATLAB structure
-        ulist{i}.rtplan = regexp(char(py.json.dumps(j)), ...
-            '"([^"]+)": ([0-9]+)', 'tokens');  
-        
-        % Loop through RTPLAN series
-        for j = 1:length(ulist{i}.rtplan)
-            
-            % Query SOP instance UIDs
-            r = session.get(['http://', server, '/_dicom/sopinsts/', ...
-                ulist{i}.patient_id, '/RTPLAN/', ulist{i}.rtplan{j}{1}]);
-
-            % Retrieve the JSON results
-            k = r.json();
-            
-            % Convert to MATLAB structure
-            ulist{i}.rtplan{j}{3} = regexp(char(py.json.dumps(k)), ...
-                '"([0-9\.]+)"', 'tokens'); 
-        end
-    end
-    
     % If the above function calls work, log a success message
     if exist('Event', 'file') == 2
         Event(sprintf(['DICOM list retrieved successfully containing %i ', ...
