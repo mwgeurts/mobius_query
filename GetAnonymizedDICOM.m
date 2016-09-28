@@ -16,14 +16,14 @@ function [session, list] = GetAnonymizedDICOM(varargin)
 %   varargin: cell array of strings, with odd indices of 'server', 
 %       'session', 'list', and 'folder' followed by a string containing the 
 %       server name/IP, Python session (created from EstablishConnection), 
-%       cell array of structures containing css_id fields, and a string 
-%       containing a folder path, respectively. The server and folder 
-%       inputs are stored persistently and are not required if this 
-%       function is called again.
+%       cell array of structures containing patient_id and patient_name 
+%       fields, and a string containing a folder path, respectively. The 
+%       server and folder inputs are stored persistently and are not 
+%       required if this function is called again.
 %
 % The following variables are returned upon succesful completion:
 %   session: Python session object
-%   list: cell array of structures containing 'css_id', 'subfolder', and
+%   list: cell array of structures containing 'patient_id', 'folder', and
 %       'files' fields
 %
 % Below is an example of how the function is used:
@@ -154,8 +154,13 @@ for i = 1:length(list)
     
     % Log parsing
     if exist('Event', 'file') == 2
-        Event(['Creating anonymized compressed file for ', ...
-            list{i}.patient_id]);
+        if isfield(list{i}, 'patient_name')
+            Event(['Creating anonymized compressed file for ', ...
+                list{i}.patient_name]);
+        else
+            Event(['Creating anonymized compressed file for ', ...
+                list{i}.patient_id]);
+        end
     end
 
     % Execute get function of Python session object to initiate the 
@@ -186,40 +191,26 @@ for i = 1:length(list)
     s = loadjson(char(py.json.dumps(j)));
 
     % Store the returned file_str
-    list{i}.folder = regexprep(s.file_str, '\.zip$', '');
-
-    % Make a subfolder based on the file_str response
-    try
-        mkdir(fullfile(folder, '/', list{i}.folder));
-    catch
-
-        % If mkdir fails, throw a warning
-        if exist('Event', 'file') == 2
-            Event(sprintf('Subfolder %s could not be created.', ...
-                fullfile(folder, '/', list{i}.folder)), 'WARN');
-        else
-            warning('Subfolder %s could not be created.', ...
-                fullfile(folder, '/', list{i}.folder));
-        end
-
-        % Skip to the next list item
-        continue;
-    end
+    list{i}.folder = s.file_str(1:end-4);
 
     % Once a response is returned, the anonymized .zip file is ready to
     % be downloaded to a temporary file
     try
         
-        % Generate a temporary file name to store the .zip file
-        t = [tempname, '.zip'];
-        
         % Create a Python file handle to the temp file
-        f = py.open(t, 'wb');
+        f = py.open(fullfile(tempdir, s.file_str), 'wb');
         
         % Log parsing
         if exist('Event', 'file') == 2
-            Event(['Downloading compressed file for ', list{i}.patient_id, ...
-                ' to ', t]);
+            if isfield(list{i}, 'patient_name')
+                Event(['Downloading compressed file for ', ...
+                    list{i}.patient_name, ' to ', ...
+                    fullfile(tempdir, s.file_str)]);
+            else
+                Event(['Downloading compressed file for ', ...
+                    list{i}.patient_id, ' to ', ...
+                    fullfile(tempdir, s.file_str)]);
+            end
         end
         
         % Download the .zip file from the Mobius3D server to the temp file
@@ -231,24 +222,28 @@ for i = 1:length(list)
         
         % Log parsing
         if exist('Event', 'file') == 2
-            Event(['Uncompressing ', t, ' to ', folder]);
+            Event(['Uncompressing ', fullfile(tempdir, s.file_str), ...
+                ' to ', folder]);
         end
         
         % Unzip the temp file into the destination folder, storing the
         % unzipped file names
-        list{i}.files = unzip(t, folder);
+        list{i}.files = unzip(fullfile(tempdir, s.file_str), folder);
         
     catch
 
         % If the above code fails, throw a warning
         if exist('Event', 'file') == 2
-            Event(sprintf('Error downloading the file %s.', ['http://', ...
+            Event(sprintf('Error downloading the file %s', ['http://', ...
                 server, '/_dicom/anon/download/', s.file_str]), 'WARN');
         else
-            warning('Error downloading the file %s.', ['http://', ...
+            warning('Error downloading the file %s', ['http://', ...
                 server, '/_dicom/anon/download/', s.file_str]);
         end
 
+        % Return an empty list of files
+        list{i}.files = cell(0);
+        
         % Skip to the next list item
         continue;
     end
