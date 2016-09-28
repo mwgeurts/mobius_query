@@ -154,12 +154,12 @@ try
     end
     
     % Loop through plans, retrieving SOP instances
-    for i = 1:length(list)
+    for i = 1:length(ulist)
         
         % Log query
         if exist('Event', 'file') == 2
             Event(sprintf('Retrieving RTPLAN instances for %s (%i/%i)', ...
-                ulist{i}.patient_name, i, length(list)));
+                ulist{i}.patient_name, i, length(ulist)));
         end
         
         % Query RTPLAN series
