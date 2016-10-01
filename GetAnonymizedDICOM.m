@@ -247,6 +247,18 @@ for i = 1:length(list)
         % Skip to the next list item
         continue;
     end
+    
+    % Try to delete the compressed file
+    try
+        delete(fullfile(tempdir, s.file_str));
+    catch
+        % If the above code fails, throw a warning
+        if exist('Event', 'file') == 2
+            Event('Compressed file could not be deleted', 'WARN');
+        else
+            warning('Compressed file could not be deleted');
+        end
+    end
 end
 
 % Log a success message
