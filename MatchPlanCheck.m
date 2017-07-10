@@ -135,41 +135,32 @@ if isempty(list)
     try
 
         % Execute get function of Python session object to retrieve list of 
-        % patients from Mobius3D
-        r = session.session.get(['http://', session.server, ...
-            '/_plan/list?sort=date&descending=1&limit=999999']);
-
-        % Retrieve the JSON results
-        j = r.json();
-
-        % Execute loadjson() to convert the JSON list to a MATLAB structure
-        s = loadjson(char(py.json.dumps(j)));
-
-        % Retrieve cell array
-        if isfield(s, 'patients')
-            list = s.patients;
-
-        % If the field does not exist, an error may have occured
-        else
-
-            % Log an error
-            if exist('Event', 'file') == 2
-                Event('An error occurred returning the patient list', ...
-                    'ERROR');
-            else
-                error('An error occurred returning the patient list');
-            end
-        end
-
-    % Otherwise, if an error occurred, a connection was not successful
-    catch
-
+    % patients from Mobius3D
+    r = session.session.get(['http://', session.server, ...
+        '/_plan/list?sort=date&descending=1&limit=999999']);
+    
+    % Execute loadjson() to convert the JSON list to a MATLAB structure
+    s = jsondecode(char(r.text));
+    
+    % Retrieve cell array
+    if isfield(s, 'patients')
+        list = s.patients;
+    
+    % If the field does not exist, an error may have occured
+    else
+        
         % Log an error
         if exist('Event', 'file') == 2
-            Event(['The request to ', session.server, ' failed.'], 'ERROR');
+            Event('An error occurred returning the patient list', 'ERROR');
         else
-            error(['The request to ', session.server, ' failed.']);
+            error('An error occurred returning the patient list');
         end
+    end
+    
+    % If the above function calls work, log a success message
+    if exist('Event', 'file') == 2
+        Event(sprintf(['Patient list retrieved successfully containing %i ', ...
+            'entries in %0.3f seconds'], length(list), toc));
     end
 
     % Clear temporary variables
