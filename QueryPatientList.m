@@ -1,4 +1,4 @@
-function [session, list] = QueryPatientList(varargin)
+function [session, list] = QueryPatientList(session)
 % QueryPatientList returns the list of plan checks stored in Mobius3D.
 % The function requires an active Python session, created from
 % EstablishConnection, and a server name. It will then query the Mobius3D
@@ -6,14 +6,11 @@ function [session, list] = QueryPatientList(varargin)
 % check exists.
 %
 % The following variables are required for proper execution: 
-%   varargin: cell array of strings, with odd indices of 'server' and 
-%       'session' followed by a string containing the server name/IP
-%       and Python session (created from EstablishConnection), 
-%       respectively. The server input is stored persistently and is not 
-%       required if this function is called again.
+%   
+%   session: Python session created from EstablishConnection
 %
 % The following variables are returned upon succesful completion:
-%   session: Python session object
+%   session: Python session object, see EstablishConnection
 %   list: cell array of structures containing patientId, patientName, and
 %       plans fields
 %
@@ -22,8 +19,7 @@ function [session, list] = QueryPatientList(varargin)
 %   % Connect to Mobius3D server and retrieve list of DICOM data
 %   session = EstablishConnection('server', '10.105.1.12', 'user', ...
 %       'guest', 'pass', 'guest');
-%   [session, list] = QueryPatientList('server', '10.105.1.12', 'session', ...
-%       session);
+%   [session, list] = QueryPatientList(session);
 %   
 %   % Loop through data, printing the patient ID
 %   for i = 1:length(list)
@@ -31,7 +27,7 @@ function [session, list] = QueryPatientList(varargin)
 %   end
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
-% Copyright (C) 2016 University of Wisconsin Board of Regents
+% Copyright (C) 2017 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  
@@ -46,26 +42,11 @@ function [session, list] = QueryPatientList(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Declare persistent variables
-persistent server;
-
 % Start timer
 tic;
 
-% Loop through input arguments
-for i = 1:2:nargin
-    
-    % Store server variables
-    if strcmpi(varargin{i}, 'server')
-        server = varargin{i+1};
-    elseif strcmpi(varargin{i}, 'session')
-        session = varargin{i+1};
-    end
-end
-
 % If server variables are empty, throw an error
-if exist('server', 'var') == 0 || isempty(server) || ...
-        exist('session', 'var') == 0 || isempty(session)
+if isempty(session)
 
     % Log error
     if exist('Event', 'file') == 2
@@ -82,7 +63,7 @@ try
     
     % Execute get function of Python session object to retrieve list of 
     % patients from Mobius3D
-    r = session.get(['http://', server, ...
+    r = session.session.get(['http://', session.server, ...
         '/_plan/list?sort=date&descending=1&limit=999999']);
     
     % Execute loadjson() to convert the JSON list to a MATLAB structure
@@ -114,11 +95,11 @@ catch
     
     % Log an error
     if exist('Event', 'file') == 2
-        Event(['The request to ', server, ' failed.'], 'ERROR');
+        Event(['The request to ', session.server, ' failed.'], 'ERROR');
     else
-        error(['The request to ', server, ' failed.']);
+        error(['The request to ', session.server, ' failed.']);
     end
 end
 
 % Clear temporary variables
-clear i r s;
+clear r s;

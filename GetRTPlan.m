@@ -1,17 +1,19 @@
-function [session, rtplan] = GetRTPlan(varargin)
+function [session, rtplan] = GetRTPlan(session, varargin)
 % GetRTPlan retrieves the DICOM RT Plan from Mobius3D for a given plan
 % check or SOP instance UID. Mobius3D returns the RT plan as a JSON file,
 % which in turn is converted into a MATLAB structure. Note that binary tags
 % will be excluded in the resulting structure.
 %
 % The following variables are required for proper execution: 
-%   varargin: cell array of strings, with odd indices of 'server',
-%       'session', and either 'plan' or 'sopinst' followed by strings 
-%       containing the server name/IP, Python session, and plan structure
-%       (obtained from MatchPlanCheck) or SOP instance UID
+%
+%   session: Python session object created by EstablishConnection
+%   varargin: cell array of strings, with first index of either 'plan' or 
+%       'sopinst' followed by the plan structure (obtained from 
+%       MatchPlanCheck) or SOP instance UID string
 %
 % The following variables are returned upon succesful completion:
-%   session: Python session object
+%
+%   session: Python session object created by EstablishConnection
 %   rtplan: structure containing the RT plan, with DICOM field names
 %       defined using the format of the default MATLAB DICOM dictionary
 %
@@ -22,8 +24,7 @@ function [session, rtplan] = GetRTPlan(varargin)
 %       'guest', 'pass', 'guest');
 %
 %   % Retrieve RT plan for matched plan check
-%   [session, rtplan] = GetRTPlan('server', '10.105.1.12', 'session', ...
-%       session, 'sopinst', 'plansopuid');
+%   [session, rtplan] = GetRTPlan(session, 'sopinst', 'plansopuid');
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
 % Copyright (C) 2017 University of Wisconsin Board of Regents
@@ -41,9 +42,6 @@ function [session, rtplan] = GetRTPlan(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Declare persistent variables
-persistent server;
-
 % Start timer
 tic;
 
@@ -52,13 +50,6 @@ sop = '';
 
 % Loop through input arguments
 for i = 1:2:nargin
-    
-    % Store server variables
-    if strcmpi(varargin{i}, 'server')
-        server = varargin{i+1};
-    elseif strcmpi(varargin{i}, 'session')
-        session = varargin{i+1};
-    end
     
     % Store RT plan SOP instance UID
     if strcmpi(varargin{i}, 'plan') && isfield(varargin{i+1}, 'settings')
@@ -69,8 +60,7 @@ for i = 1:2:nargin
 end
 
 % If server variables are empty, throw an error
-if exist('server', 'var') == 0 || isempty(server) || ...
-        exist('session', 'var') == 0 || isempty(session)
+if isempty(session)
 
     % Log error
     if exist('Event', 'file') == 2
@@ -104,7 +94,7 @@ end
 try
     
     % Retrieve DICOM RT Plan in JSON format
-    r = session.get(['http://', server, '/_dicom/view/', sop]);
+    r = session.session.get(['http://', session.server, '/_dicom/view/', sop]);
 
     % Log status
     if exist('Event', 'file') == 2
@@ -123,9 +113,9 @@ catch
     
     % Log an error
     if exist('Event', 'file') == 2
-        Event(['The request to ', server, ' failed'], 'ERROR');
+        Event(['The request to ', session.server, ' failed'], 'ERROR');
     else
-        error(['The request to ', server, ' failed']);
+        error(['The request to ', session.server, ' failed']);
     end
 end
 

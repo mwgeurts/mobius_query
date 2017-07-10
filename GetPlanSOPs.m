@@ -1,20 +1,21 @@
-function [session, ct, rtss, dose, rtplan] = GetPlanSOPs(varargin)
+function [session, ct, rtss, dose, rtplan] = GetPlanSOPs(session, patient_id)
 % GetPlanSOPs retrieves the DICOM SOP instance UIDs from Mobius3D for a 
 % given patient ID, returning a cell array. The CT, RTSTRUCT, RTDOSE, and 
 % RTPLAN SOPs are returned. Server is stored persistently and does not need
 % to be passed each time as an input.
 %
 % The following variables are required for proper execution: 
-%   varargin: cell array of strings, with odd indices of 'server',
-%       'session', and 'patient_id' followed by strings 
-%       containing the server name/IP, Python session, and patient ID
+%
+%   session:    Python session object created from EstablishConnection
+%   patient_id: patient ID
 %
 % The following variables are returned upon succesful completion:
-%   session: Python session object
-%   ct: cell array containing the CT SOP instance UIDs
-%   rtss: cell array containing the RTSTRUCT SOP instance UIDs
-%   dose: cell array containing the RTDOSE SOP instance UIDs
-%   rtplan: cell array containing the RTPLAN SOP instance UIDs
+%
+%   session:    Python session object created from EstablishConnection
+%   ct:         cell array containing the CT SOP instance UIDs
+%   rtss:       cell array containing the RTSTRUCT SOP instance UIDs
+%   dose:       cell array containing the RTDOSE SOP instance UIDs
+%   rtplan:     cell array containing the RTPLAN SOP instance UIDs
 %
 % Below is an example of how the function is used:
 %
@@ -23,11 +24,10 @@ function [session, ct, rtss, dose, rtplan] = GetPlanSOPs(varargin)
 %       'guest', 'pass', 'guest');
 %
 %   % Retrieve RT plan SOPs for patient ID 12345678
-%   [session, ~, ~, ~, rtplan] = GetPlanSOPs('server', '10.105.1.12', ...
-%       'session', session, 'patient_id', '12345678');
+%   [session, ~, ~, ~, rtplan] = GetPlanSOPs(session, '12345678');
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
-% Copyright (C) 2016 University of Wisconsin Board of Regents
+% Copyright (C) 2017 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  
@@ -42,31 +42,11 @@ function [session, ct, rtss, dose, rtplan] = GetPlanSOPs(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Declare persistent variables
-persistent server;
-
 % Start timer
 tic;
 
-% Initialize patient ID
-patient_id = '';
-
-% Loop through input arguments
-for i = 1:2:nargin
-    
-    % Store server variables
-    if strcmpi(varargin{i}, 'server')
-        server = varargin{i+1};
-    elseif strcmpi(varargin{i}, 'session')
-        session = varargin{i+1};
-	elseif strcmpi(varargin{i}, 'patient_id')
-        patient_id = varargin{i+1};
-    end
-end
-
 % If server variables are empty, throw an error
-if exist('server', 'var') == 0 || isempty(server) || ...
-        exist('session', 'var') == 0 || isempty(session)
+if isempty(session)
 
     % Log error
     if exist('Event', 'file') == 2
@@ -98,21 +78,21 @@ try
     end
     
     % Retrieve instance UIDs
-    r = session.get(['http://', server, '/_dicom/series/', patient_id, ...
-    	'/CT']);
+    r = session.session.get(['http://', session.server, '/_dicom/series/', ...
+        patient_id, '/CT']);
 
 	% Convert to MATLAB structure
 	ct = regexp(char(r.text), '"([^"]+)": ([0-9]+)', 'tokens');
 		
 	% Loop through RTPLAN series
-    for j = 1:length(ct)
+    for i = 1:length(ct)
 		
 		% Query SOP instance UIDs
-		r = session.get(['http://', server, '/_dicom/sopinsts/', ...
-			patient_id, '/CT/', ct{j}{1}]);
+		r = session.session.get(['http://', session.server, ...
+            '/_dicom/sopinsts/', patient_id, '/CT/', ct{i}{1}]);
 
 		% Convert to MATLAB structure
-		ct{j}{3} = regexp(char(r.text), '"([0-9\.]+)"', 'tokens'); 
+		ct{i}{3} = regexp(char(r.text), '"([0-9\.]+)"', 'tokens'); 
     end
     
     % Log event
@@ -121,21 +101,21 @@ try
     end
     
     % Retrieve instance UIDs
-    r = session.get(['http://', server, '/_dicom/series/', patient_id, ...
-    	'/RTSTRUCT']);
+    r = session.session.get(['http://', session.server, '/_dicom/series/', ...
+        patient_id, '/RTSTRUCT']);
 
 	% Convert to MATLAB structure
 	rtss = regexp(char(r.text), '"([^"]+)": ([0-9]+)', 'tokens');
 		
 	% Loop through RTSTRUCT series
-    for j = 1:length(rtss)
+    for i = 1:length(rtss)
 		
 		% Query SOP instance UIDs
-		r = session.get(['http://', server, '/_dicom/sopinsts/', ...
-			patient_id, '/RTPLAN/', rtss{j}{1}]);
+		r = session.session.get(['http://', session.server, ...
+            '/_dicom/sopinsts/', patient_id, '/RTPLAN/', rtss{i}{1}]);
 
 		% Convert to MATLAB structure
-		rtss{j}{3} = regexp(char(r.text), '"([0-9\.]+)"', 'tokens'); 
+		rtss{i}{3} = regexp(char(r.text), '"([0-9\.]+)"', 'tokens'); 
     end
     
     % Log event
@@ -144,21 +124,21 @@ try
     end
     
     % Retrieve instance UIDs
-    r = session.get(['http://', server, '/_dicom/series/', patient_id, ...
-    	'/RTDOSE']);
+    r = session.session.get(['http://', session.server, '/_dicom/series/', ...
+        patient_id, '/RTDOSE']);
 
 	% Convert to MATLAB structure
 	dose = regexp(char(r.text), '"([^"]+)": ([0-9]+)', 'tokens');
 		
 	% Loop through RTSTRUCT series
-	for j = 1:length(dose)
+	for i = 1:length(dose)
 		
 		% Query SOP instance UIDs
-		r = session.get(['http://', server, '/_dicom/sopinsts/', ...
-			patient_id, '/RTDOSE/', dose{j}{1}]);
+		r = session.session.get(['http://', session.server, ...
+            '/_dicom/sopinsts/', patient_id, '/RTDOSE/', dose{i}{1}]);
 
 		% Convert to MATLAB structure
-		dose{j}{3} = regexp(char(r.text), '"([0-9\.]+)"', 'tokens'); 
+		dose{i}{3} = regexp(char(r.text), '"([0-9\.]+)"', 'tokens'); 
 	end
     
     % Log event
@@ -167,21 +147,21 @@ try
     end
     
     % Retrieve DICOM RT Plan in JSON format
-    r = session.get(['http://', server, '/_dicom/series/', patient_id, ...
-    	'/RTPLAN']);
+    r = session.session.get(['http://', session.server, '/_dicom/series/', ...
+        patient_id, '/RTPLAN']);
 
 	% Convert to MATLAB structure
 	rtplan = regexp(char(r.text), '"([^"]+)": ([0-9]+)', 'tokens');
 		
 	% Loop through RTPLAN series
-	for j = 1:length(rtplan)
+	for i = 1:length(rtplan)
 		
 		% Query SOP instance UIDs
-		r = session.get(['http://', server, '/_dicom/sopinsts/', ...
-			patient_id, '/RTPLAN/', rtplan{j}{1}]);
+		r = session.session.get(['http://', session.server, ...
+            '/_dicom/sopinsts/', patient_id, '/RTPLAN/', rtplan{i}{1}]);
 
 		% Convert to MATLAB structure
-		rtplan{j}{3} = regexp(char(r.text), '"([0-9\.]+)"', 'tokens'); 
+		rtplan{i}{3} = regexp(char(r.text), '"([0-9\.]+)"', 'tokens'); 
 	end
 
 % Otherwise, if an error occurred, a connection was not successful
@@ -189,11 +169,11 @@ catch
     
     % Log an error
     if exist('Event', 'file') == 2
-        Event(['The request to ', server, ' failed'], 'ERROR');
+        Event(['The request to ', session.server, ' failed'], 'ERROR');
     else
-        error(['The request to ', server, ' failed']);
+        error(['The request to ', session.server, ' failed']);
     end
 end
 
 % Clear temporary variables
-clear i j r;
+clear i r;

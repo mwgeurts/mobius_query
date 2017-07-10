@@ -13,7 +13,8 @@ function session = EstablishConnection(varargin)
 %       username, and password, respectively.
 %
 % The following variables are returned upon succesful completion:
-%   session: Python session object
+%   session: structure containing the Python version, a session object, and
+%       the server name
 %
 % Below is an example of how the function is used:
 %
@@ -78,9 +79,12 @@ try
     % Execute the Python version function
     v = py.sys.version;
     
+    % Store python version
+    session.version = char(v);
+    
     % Log the Python version
     if exist('Event', 'file') == 2
-        Event(['MATLAB is configured to use Python ', char(v)]);
+        Event(['MATLAB is configured to use Python ', session.version]);
     end    
     
 % If a error occurs, Python is most likely not installed
@@ -98,8 +102,9 @@ end
 
 % Initialize Python session
 try
+    
     % Execute the Python requests library Session() constructor
-    session = py.requests.Session();
+    session.session = py.requests.Session();
 
 % If an error occurs, the requests library is most likely not installed
 catch
@@ -114,13 +119,16 @@ end
 
 % Attempt to connect to Mobius3D server and retrieve some data
 try
+       
+    % Store the server name
+    session.server = server;
     
     % Send authentication credentials to the Mobius3D server
-    session.post(['http://', server, '/auth/login'], ...
+    session.session.post(['http://', server, '/auth/login'], ...
         py.dict(pyargs('username', user, 'password', pass)));
     
     % Attempt to retrieve the patient list
-    session.get(['http://', server, ...
+    session.session.get(['http://', server, ...
         '/_plan/list?sort=date&descending=1&limit=1']);
    
     % If the above function calls work, log a success message

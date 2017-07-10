@@ -1,4 +1,4 @@
-function results = QueryPlanChecks(varargin)
+function results = QueryPlanChecks(session, varargin)
 % QueryPlanChecks searches through the Mobius3D plan check list
 % returning key results in a structure for plans that match the provided
 % search criteria. For example, one can search for all plans matching a
@@ -27,9 +27,6 @@ function results = QueryPlanChecks(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Declare persistent variables
-persistent server;
-
 % Initialize return table
 results = table;
 
@@ -57,17 +54,11 @@ warning('off', 'MATLAB:table:RowsAddedExistingVars');
 tic;
 
 % Loop through input arguments
-for i = 1:2:nargin
-    
-    % Store server variables
-    if strcmpi(varargin{i}, 'server')
-        server = varargin{i+1};
-    elseif strcmpi(varargin{i}, 'session')
-        session = varargin{i+1};
-    elseif strcmpi(varargin{i}, 'list')
+for i = 1:2:length(varargin)
+
+    % Store search variables
+    if strcmpi(varargin{i}, 'list')
         list = varargin{i+1};
-    
-    % Store search variables  
     elseif strcmpi(varargin{i}, 'machine')
         machine = varargin{i+1};
     elseif strcmpi(varargin{i}, 'planname')
@@ -86,8 +77,7 @@ for i = 1:2:nargin
 end
 
 % If server variables are empty, throw an error
-if exist('server', 'var') == 0 || isempty(server) || ...
-        exist('session', 'var') == 0 || isempty(session)
+if isempty(session)
 
     % Log error
     if exist('Event', 'file') == 2
@@ -112,7 +102,7 @@ if isempty(list)
 
         % Execute get function of Python session object to retrieve list of 
         % patients from Mobius3D
-        r = session.get(['http://', server, ...
+        r = session.session.get(['http://', session.server, ...
             '/_plan/list?sort=date&descending=1&limit=999999999']);
 
         % Convert the JSON list to a MATLAB structure
@@ -139,9 +129,9 @@ if isempty(list)
 
         % Log an error
         if exist('Event', 'file') == 2
-            Event(['The request to ', server, ' failed.'], 'ERROR');
+            Event(['The request to ', session.server, ' failed.'], 'ERROR');
         else
-            error(['The request to ', server, ' failed.']);
+            error(['The request to ', session.server, ' failed.']);
         end
     end
 
@@ -214,7 +204,7 @@ for i = 1:length(list)
         
         % Execute get function of Python session object to retrieve plan
         % check JSON
-        r = session.get(['http://', server, '/check/details/', ...
+        r = session.session.get(['http://', session.server, '/check/details/', ...
             list(i).plans(j).request_cid, '?format=json']);
         
         % Remove long couchable keys, as they cause errors
@@ -487,8 +477,9 @@ for i = 1:length(list)
             end
             
             % Execute get function of Python session object to retrieve DVH
-            r = session.get(['http://', server, '/check/attachment/', ...
-                list(i).plans(j).request_cid, '/dvhChart_data.json']);
+            r = session.session.get(['http://', session.server, ...
+                '/check/attachment/', list(i).plans(j).request_cid, ...
+                '/dvhChart_data.json']);
 
             % Convert the JSON list to a MATLAB structure
             s = jsondecode(char(r.text));

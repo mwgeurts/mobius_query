@@ -1,19 +1,13 @@
-function [session, list] = QueryDICOMList(varargin)
+function [session, list] = QueryDICOMList(session)
 % QueryDICOMList returns the list of DICOM patient data stored in Mobius3D.
-% The function requires an active Python session, created from
-% EstablishConnection, and a server name. It will then query the Mobius3D
-% server and return the list of patient IDs and names for which DICOM RT 
-% plan data exists.
 %
 % The following variables are required for proper execution: 
-%   varargin: cell array of strings, with odd indices of 'server' and 
-%       'session' followed by a string containing the server name/IP
-%       and Python session (created from EstablishConnection), 
-%       respectively. The server input is stored persistently and is not 
-%       required if this function is called again.
+%
+%   session: Python session object created by EstablishConnection
 %
 % The following variables are returned upon succesful completion:
-%   session: Python session object
+%
+%   session: Python session object created by EstablishConnection
 %   list: cell array of structures containing 'css_id', 'patient_name', 
 %       and 'patient_id' fields
 %
@@ -22,8 +16,7 @@ function [session, list] = QueryDICOMList(varargin)
 %   % Connect to Mobius3D server and retrieve list of DICOM data
 %   session = EstablishConnection('server', '10.105.1.12', 'user', ...
 %       'guest', 'pass', 'guest');
-%   [session, list] = QueryDICOMList('server', '10.105.1.12', 'session', ...
-%       session);
+%   [session, list] = QueryDICOMList(session);
 %   
 %   % Loop through data, printing the patient ID
 %   for i = 1:length(list)
@@ -31,7 +24,7 @@ function [session, list] = QueryDICOMList(varargin)
 %   end
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
-% Copyright (C) 2016 University of Wisconsin Board of Regents
+% Copyright (C) 2017 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  
@@ -46,26 +39,11 @@ function [session, list] = QueryDICOMList(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Declare persistent variables
-persistent server;
-
 % Start timer
 tic;
 
-% Loop through input arguments
-for i = 1:2:nargin
-    
-    % Store server variables
-    if strcmpi(varargin{i}, 'server')
-        server = varargin{i+1};
-    elseif strcmpi(varargin{i}, 'session')
-        session = varargin{i+1};
-    end
-end
-
 % If server variables are empty, throw an error
-if exist('server', 'var') == 0 || isempty(server) || ...
-        exist('session', 'var') == 0 || isempty(session)
+if isempty(session)
 
     % Log error
     if exist('Event', 'file') == 2
@@ -82,12 +60,12 @@ try
     
     % Log query
     if exist('Event', 'file') == 2
-        Event(['Querying ', server, ' for DICOM datasets']);
+        Event(['Querying ', session.server, ' for DICOM datasets']);
     end
         
     % Execute get function of Python session object to retrieve list of 
     % DICOM patients from Mobius3D
-    r = session.get(['http://', server, '/_dicom/patients']);
+    r = session.session.get(['http://', session.server, '/_dicom/patients']);
 
     % Convert to MATLAB structure
     s = jsondecode(char(r.text));
@@ -121,9 +99,9 @@ catch
     
     % Log an error
     if exist('Event', 'file') == 2
-        Event(['The request to ', server, ' failed.'], 'ERROR');
+        Event(['The request to ', session.server, ' failed.'], 'ERROR');
     else
-        error(['The request to ', server, ' failed.']);
+        error(['The request to ', session.server, ' failed.']);
     end
 end
 

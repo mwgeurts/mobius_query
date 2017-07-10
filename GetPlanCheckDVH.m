@@ -1,16 +1,18 @@
-function [session, dvh] = GetPlanCheckDVH(varargin)
+function [session, dvh] = GetPlanCheckDVH(session, varargin)
 % GetPlanCheckDVH retrieves the Mobius3D plan check DVH chart structure 
 % containing Mobius3D-calculated DVH curves for each ROI.
 %
-% The following variables are required for proper execution: 
-%   varargin: cell array of strings, with odd indices of 'server',
-%       'session', and either 'plan' or 'cid' followed by strings 
-%       containing the server name/IP, Python session, and plan structure
-%       (obtained from MatchPlanCheck) or request CID
+% The following variables are required for proper execution:
+%
+%   session:    Python session object from EstablishConnection
+%   varargin:   cell array of strings, with fixed index either 'plan' or 
+%               'cid' followed by plan structure (obtained from 
+%               MatchPlanCheck) or request CID string
 %
 % The following variables are returned upon succesful completion:
-%   session: Python session object
-%   dvh: structure containing the DVH data
+%
+%   session:    Python session object from EstablishConnection
+%   dvh:        structure containing the DVH data
 %
 % Below is an example of how the function is used:
 %
@@ -19,15 +21,14 @@ function [session, dvh] = GetPlanCheckDVH(varargin)
 %       'guest', 'pass', 'guest');
 %   
 %   % Search for plan check
-%   [session, check] = MatchPlanCheck('server', '10.105.1.12', 'session', ...
-%       session, 'id', '123456', 'plan', 'VMAT');
+%   [session, check] = MatchPlanCheck(session, 'id', '123456', ...
+%       'plan', 'VMAT');
 %
 %   % Retrieve DVHs for matched plan check
-%   [session, rtplan] = GetPlanCheckDVH('server', '10.105.1.12', 'session', ...
-%       session, 'plan', plan);
+%   [session, rtplan] = GetPlanCheckDVH(session, 'plan', plan);
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
-% Copyright (C) 2016 University of Wisconsin Board of Regents
+% Copyright (C) 2017 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  
@@ -42,9 +43,6 @@ function [session, dvh] = GetPlanCheckDVH(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Declare persistent variables
-persistent server;
-
 % Start timer
 tic;
 
@@ -52,14 +50,7 @@ tic;
 cid = '';
 
 % Loop through input arguments
-for i = 1:2:nargin
-    
-    % Store server variables
-    if strcmpi(varargin{i}, 'server')
-        server = varargin{i+1};
-    elseif strcmpi(varargin{i}, 'session')
-        session = varargin{i+1};
-    end
+for i = 1:2:length(varargin)
     
     % Store plan check CID
     if strcmpi(varargin{i}, 'plan') && isfield(varargin{i+1}, 'request')
@@ -70,8 +61,7 @@ for i = 1:2:nargin
 end
 
 % If server variables are empty, throw an error
-if exist('server', 'var') == 0 || isempty(server) || ...
-        exist('session', 'var') == 0 || isempty(session)
+if isempty(session)
 
     % Log error
     if exist('Event', 'file') == 2
@@ -105,8 +95,8 @@ end
 try
     
     % Retrieve DVH chart in JSON format
-    r = session.get(['http://', server, '/check/attachment/', ...
-            cid, '/dvhChart_data.json']);
+    r = session.session.get(['http://', session.server, ...
+        '/check/attachment/', cid, '/dvhChart_data.json']);
 
     % Log status
     if exist('Event', 'file') == 2
@@ -120,9 +110,9 @@ catch
     
     % Log an error
     if exist('Event', 'file') == 2
-        Event(['The request to ', server, ' failed.'], 'ERROR');
+        Event(['The request to ', session.server, ' failed.'], 'ERROR');
     else
-        error(['The request to ', server, ' failed.']);
+        error(['The request to ', session.server, ' failed.']);
     end
 end
 
@@ -143,13 +133,13 @@ catch
     
     % Log an error
     if exist('Event', 'file') == 2
-        Event(['Could not parse the return data from http://', server, ...
+        Event(['Could not parse the return data from http://', session.server, ...
             '/check/attachment/', cid, '/dvhChart_data.json'], 'ERROR');
     else
-        error(['Could not parse the return data from http://', server, ...
+        error(['Could not parse the return data from http://', session.server, ...
             '/check/attachment/', cid, '/dvhChart_data.json']);
     end
 end
     
 % Clear temporary variables
-clear cid r s;
+clear cid i r s;

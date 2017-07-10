@@ -1,17 +1,20 @@
-function [session, check] = MatchPlanCheck(varargin)
+function [session, check] = MatchPlanCheck(session, varargin)
 % MatchPlanCheck searches through the Mobius3D server for a plan check.
 % The function can search on patient ID and plan name or a date range. The
 % patient list can be pre-loaded by executing QueryPatientList and then
 % passed to this function to improve speed.
 %
 % The following variables are required for proper execution: 
-%   varargin: cell array of strings, with odd indices of 'server',
-%       'session', 'list', 'id', 'plan', 'date', 'range', and/or 'utc' and
-%       even indices containing the parameters. The inputs 'server',
-%       'session', 'id', and one of 'plan' or 'date' are required.
+%
+%   session: Python session object created by EstablishConnection
+%   varargin: cell array of strings, with odd indices of 'list', 'id', 
+%       'plan', 'date', 'range', and/or 'utc' and even indices containing 
+%       the parameters. The input 'id' and one of 'plan' or 'date' are 
+%       required.
 %
 % The following variables are returned upon succesful completion:
-%   session: Python session object
+%
+%   session: Python session object created by EstablishConnection
 %   check: structure containing the plan check details
 %
 % Below is an example of how the function is used:
@@ -19,15 +22,13 @@ function [session, check] = MatchPlanCheck(varargin)
 %   % Connect to Mobius3D server and retrieve list of DICOM data
 %   session = EstablishConnection('server', '10.105.1.12', 'user', ...
 %       'guest', 'pass', 'guest');
-%   [session, list] = QueryPatientList('server', '10.105.1.12', 'session', ...
-%       session);
-%   
+
 %   % Search for patient ID 123456 and plan name 'VMAT'
-%   [session, check] = MatchPlanCheck('server', '10.105.1.12', 'session', ...
-%       session, 'list', list, 'id', '123456', 'plan', 'VMAT');
+%   [session, check] = MatchPlanCheck(session, 'id', '123456', ...
+%       'plan', 'VMAT');
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
-% Copyright (C) 2016 University of Wisconsin Board of Regents
+% Copyright (C) 2017 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  
@@ -41,9 +42,6 @@ function [session, check] = MatchPlanCheck(varargin)
 % 
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
-
-% Declare persistent variables
-persistent server;
 
 % Initialize plan list cell array
 list = [];
@@ -65,15 +63,9 @@ tic;
 % Loop through input arguments
 for i = 1:2:nargin
     
-    % Store server variables
-    if strcmpi(varargin{i}, 'server')
-        server = varargin{i+1};
-    elseif strcmpi(varargin{i}, 'session')
-        session = varargin{i+1};
-    elseif strcmpi(varargin{i}, 'list')
-        list = varargin{i+1};
-        
-    % Store plan check    
+    % Store variables
+    if strcmpi(varargin{i}, 'list')
+        list = varargin{i+1};  
     elseif strcmpi(varargin{i}, 'id')
         id = varargin{i+1};
     elseif strcmpi(varargin{i}, 'plan')
@@ -83,9 +75,7 @@ for i = 1:2:nargin
             date = datenum(varargin{i+1});
         else
             date = varargin{i+1};
-        end
-        
-    % Store date range match variables
+        end        
     elseif strcmpi(varargin{i}, 'range')
         range = varargin{i+1};
     elseif strcmpi(varargin{i}, 'utc')
@@ -94,8 +84,7 @@ for i = 1:2:nargin
 end
 
 % If server variables are empty, throw an error
-if exist('server', 'var') == 0 || isempty(server) || ...
-        exist('session', 'var') == 0 || isempty(session)
+if isempty(session)
 
     % Log error
     if exist('Event', 'file') == 2
@@ -147,7 +136,7 @@ if isempty(list)
 
         % Execute get function of Python session object to retrieve list of 
         % patients from Mobius3D
-        r = session.get(['http://', server, ...
+        r = session.session.get(['http://', session.server, ...
             '/_plan/list?sort=date&descending=1&limit=999999']);
 
         % Retrieve the JSON results
@@ -177,9 +166,9 @@ if isempty(list)
 
         % Log an error
         if exist('Event', 'file') == 2
-            Event(['The request to ', server, ' failed.'], 'ERROR');
+            Event(['The request to ', session.server, ' failed.'], 'ERROR');
         else
-            error(['The request to ', server, ' failed.']);
+            error(['The request to ', session.server, ' failed.']);
         end
     end
 
@@ -225,7 +214,8 @@ for i = 1:length(list)
                     end
 
                     % Retrieve JSON plan information
-                    r = session.get(['http://', server, '/check/details/', ...
+                    r = session.get(['http://', session.server, ...
+                        '/check/details/', ...
                         char(list(i).plans(j).request_cid), ...
                         '?format=json']);
                     
@@ -286,4 +276,4 @@ else
 end
 
 % Clear temporary variables
-clear date id list range server utc i j r t d;
+clear date id list range utc i j r t d;

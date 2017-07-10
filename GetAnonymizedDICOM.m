@@ -1,4 +1,4 @@
-function [session, list] = GetAnonymizedDICOM(varargin)
+function [session, list] = GetAnonymizedDICOM(session, list, folder)
 % GetAnonymizedDICOM downloads anonymized DICOM files for a patient list
 % incuding CT, RT Structure Set, RT Plan, and RT Dose files. The function 
 % requires an active Python session, created from EstablishConnection, a 
@@ -13,16 +13,15 @@ function [session, list] = GetAnonymizedDICOM(varargin)
 % re-submitted to Mobius3D or an RT PACS system.
 %
 % The following variables are required for proper execution: 
-%   varargin: cell array of strings, with odd indices of 'server', 
-%       'session', 'list', and 'folder' followed by a string containing the 
-%       server name/IP, Python session (created from EstablishConnection), 
-%       cell array of structures containing patient_id and patient_name 
-%       fields, and a string containing a folder path, respectively. The 
-%       server and folder inputs are stored persistently and are not 
-%       required if this function is called again.
+%
+%   session: Python session object from EstablishConnection
+%   list: cell array of structures containing patient_id and patient_name 
+%       fields
+%   folder: string containing a folder path, respectively. 
 %
 % The following variables are returned upon succesful completion:
-%   session: Python session object
+%
+%   session: Python session object from EstablishConnection
 %   list: cell array of structures containing 'patient_id', 'folder', and
 %       'files' fields
 %
@@ -31,15 +30,13 @@ function [session, list] = GetAnonymizedDICOM(varargin)
 %   % Connect to Mobius3D server and retrieve list of DICOM data
 %   session = EstablishConnection('server', '10.105.1.12', 'user', ...
 %       'guest', 'pass', 'guest');
-%   [session, list] = QueryDICOMList('server', '10.105.1.12', 'session', ...
-%       session);
+%   [session, list] = QueryDICOMList(session);
 %
 %   % Download all DICOM files to the folder /tmp
-%   [session, list] = GetAnonymizedDICOM('server', '10.105.1.12', ...
-%       'session', session, 'list', list, 'folder', '/tmp');
+%   [session, list] = GetAnonymizedDICOM(session, list, '/tmp');
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
-% Copyright (C) 2016 University of Wisconsin Board of Regents
+% Copyright (C) 2017 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  
@@ -54,30 +51,11 @@ function [session, list] = GetAnonymizedDICOM(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Declare persistent variables
-persistent server folder;
-
 % Start timer
 tic;
 
-% Loop through input arguments
-for i = 1:2:nargin
-    
-    % Store server variables
-    if strcmpi(varargin{i}, 'server')
-        server = varargin{i+1};
-    elseif strcmpi(varargin{i}, 'session')
-        session = varargin{i+1};
-    elseif strcmpi(varargin{i}, 'list')
-        list = varargin{i+1};
-    elseif strcmpi(varargin{i}, 'folder')
-        folder = varargin{i+1};
-    end
-end
-
 % If server variables are empty, throw an error
-if exist('server', 'var') == 0 || isempty(server) || ...
-        exist('session', 'var') == 0 || isempty(session)
+if isempty(session)
 
     % Log error
     if exist('Event', 'file') == 2
@@ -90,7 +68,7 @@ if exist('server', 'var') == 0 || isempty(server) || ...
 end
 
 % If the list variable is empty, throw an error
-if exist('list', 'var') == 0 || isempty(list) 
+if isempty(list) 
 
     % Log error
     if exist('Event', 'file') == 2
@@ -104,8 +82,7 @@ if exist('list', 'var') == 0 || isempty(list)
 end
 
 % If the folder variable is empty, or is not valid throw an error
-if exist('folder', 'var') == 0 || isempty(folder) || ...
-        exist(folder, 'file') ~= 7 
+if isempty(folder) || exist(folder, 'file') ~= 7 
 
     % Log error
     if exist('Event', 'file') == 2
@@ -150,8 +127,8 @@ for i = 1:length(list)
     % Execute get function of Python session object to initiate the 
     % DICOM anonymization function in Mobius3D
     try
-        r = session.get(['http://', server, '/_dicom/anon/create/', ...
-            list(i).patient_id]);
+        r = session.session.get(['http://', session.server, ...
+            '/_dicom/anon/create/', list(i).patient_id]);
         
         % Convert the JSON list to a MATLAB structure
         s = jsondecode(char(r.text));
@@ -195,7 +172,7 @@ for i = 1:length(list)
         end
         
         % Download the .zip file from the Mobius3D server to the temp file
-        f.write(session.get(['http://', server, ...
+        f.write(session.session.get(['http://', session.server, ...
             '/_dicom/anon/download/', s.file_str]).content);
         
         % Close the temporary file
@@ -216,10 +193,10 @@ for i = 1:length(list)
         % If the above code fails, throw a warning
         if exist('Event', 'file') == 2
             Event(sprintf('Error downloading the file %s', ['http://', ...
-                server, '/_dicom/anon/download/', s.file_str]), 'WARN');
+                session.server, '/_dicom/anon/download/', s.file_str]), 'WARN');
         else
             warning('Error downloading the file %s', ['http://', ...
-                server, '/_dicom/anon/download/', s.file_str]);
+                session.server, '/_dicom/anon/download/', s.file_str]);
         end
 
         % Return an empty list of files
