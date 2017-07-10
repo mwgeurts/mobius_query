@@ -200,7 +200,7 @@ if isempty(list)
     end
 
     % Clear temporary variables
-    clear result j s;
+    clear r j s;
 end
 
 % Loop through patient list
