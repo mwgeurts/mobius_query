@@ -61,7 +61,7 @@ utc = -5; % Central time
 tic;
 
 % Loop through input arguments
-for i = 1:2:nargin
+for i = 1:2:length(varargin)
     
     % Store variables
     if strcmpi(varargin{i}, 'list')
