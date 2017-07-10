@@ -49,7 +49,7 @@ tic;
 sop = '';
 
 % Loop through input arguments
-for i = 1:2:nargin
+for i = 1:2:length(varargin)
     
     % Store RT plan SOP instance UID
     if strcmpi(varargin{i}, 'plan') && isfield(varargin{i+1}, 'settings')
