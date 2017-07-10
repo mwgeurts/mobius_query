@@ -23,7 +23,7 @@ function [session, ct, rtss, dose, rtplan] = GetPlanSOPs(varargin)
 %       'guest', 'pass', 'guest');
 %
 %   % Retrieve RT plan SOPs for patient ID 12345678
-%   [session, ~, ~, ~, rtplan] = GetRTPlan('server', '10.105.1.12', ...
+%   [session, ~, ~, ~, rtplan] = GetPlanSOPs('server', '10.105.1.12', ...
 %       'session', session, 'patient_id', '12345678');
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
@@ -91,6 +91,7 @@ end
 
 % Attempt to connect to Mobius3D server
 try
+    
     % Log event
     if exist('Event', 'file') == 2
         Event('Retrieving CT SOP instances');
@@ -100,12 +101,8 @@ try
     r = session.get(['http://', server, '/_dicom/series/', patient_id, ...
     	'/CT']);
 
-    % Retrieve the JSON results
-	j = r.json();
-
 	% Convert to MATLAB structure
-	ct = regexp(char(py.json.dumps(j)), '"([^"]+)": ([0-9]+)', ...
-		'tokens');
+	ct = regexp(char(r.text), '"([^"]+)": ([0-9]+)', 'tokens');
 		
 	% Loop through RTPLAN series
     for j = 1:length(ct)
@@ -114,12 +111,8 @@ try
 		r = session.get(['http://', server, '/_dicom/sopinsts/', ...
 			patient_id, '/CT/', ct{j}{1}]);
 
-		% Retrieve the JSON results
-		k = r.json();
-		
 		% Convert to MATLAB structure
-		ct{j}{3} = regexp(char(py.json.dumps(k)), '"([0-9\.]+)"', ...
-			'tokens'); 
+		ct{j}{3} = regexp(char(r.text), '"([0-9\.]+)"', 'tokens'); 
     end
     
     % Log event
@@ -131,12 +124,8 @@ try
     r = session.get(['http://', server, '/_dicom/series/', patient_id, ...
     	'/RTSTRUCT']);
 
-    % Retrieve the JSON results
-	j = r.json();
-
 	% Convert to MATLAB structure
-	rtss = regexp(char(py.json.dumps(j)), '"([^"]+)": ([0-9]+)', ...
-		'tokens');
+	rtss = regexp(char(r.text), '"([^"]+)": ([0-9]+)', 'tokens');
 		
 	% Loop through RTSTRUCT series
     for j = 1:length(rtss)
@@ -145,12 +134,8 @@ try
 		r = session.get(['http://', server, '/_dicom/sopinsts/', ...
 			patient_id, '/RTPLAN/', rtss{j}{1}]);
 
-		% Retrieve the JSON results
-		k = r.json();
-		
 		% Convert to MATLAB structure
-		rtss{j}{3} = regexp(char(py.json.dumps(k)), '"([0-9\.]+)"', ...
-			'tokens'); 
+		rtss{j}{3} = regexp(char(r.text), '"([0-9\.]+)"', 'tokens'); 
     end
     
     % Log event
@@ -162,12 +147,8 @@ try
     r = session.get(['http://', server, '/_dicom/series/', patient_id, ...
     	'/RTDOSE']);
 
-    % Retrieve the JSON results
-	j = r.json();
-
 	% Convert to MATLAB structure
-	dose = regexp(char(py.json.dumps(j)), '"([^"]+)": ([0-9]+)', ...
-		'tokens');
+	dose = regexp(char(r.text), '"([^"]+)": ([0-9]+)', 'tokens');
 		
 	% Loop through RTSTRUCT series
 	for j = 1:length(dose)
@@ -176,12 +157,8 @@ try
 		r = session.get(['http://', server, '/_dicom/sopinsts/', ...
 			patient_id, '/RTDOSE/', dose{j}{1}]);
 
-		% Retrieve the JSON results
-		k = r.json();
-		
 		% Convert to MATLAB structure
-		dose{j}{3} = regexp(char(py.json.dumps(k)), '"([0-9\.]+)"', ...
-			'tokens'); 
+		dose{j}{3} = regexp(char(r.text), '"([0-9\.]+)"', 'tokens'); 
 	end
     
     % Log event
@@ -193,12 +170,8 @@ try
     r = session.get(['http://', server, '/_dicom/series/', patient_id, ...
     	'/RTPLAN']);
 
-    % Retrieve the JSON results
-	j = r.json();
-
 	% Convert to MATLAB structure
-	rtplan = regexp(char(py.json.dumps(j)), '"([^"]+)": ([0-9]+)', ...
-		'tokens');
+	rtplan = regexp(char(r.text), '"([^"]+)": ([0-9]+)', 'tokens');
 		
 	% Loop through RTPLAN series
 	for j = 1:length(rtplan)
@@ -207,12 +180,8 @@ try
 		r = session.get(['http://', server, '/_dicom/sopinsts/', ...
 			patient_id, '/RTPLAN/', rtplan{j}{1}]);
 
-		% Retrieve the JSON results
-		k = r.json();
-		
 		% Convert to MATLAB structure
-		rtplan{j}{3} = regexp(char(py.json.dumps(k)), '"([0-9\.]+)"', ...
-			'tokens'); 
+		rtplan{j}{3} = regexp(char(r.text), '"([0-9\.]+)"', 'tokens'); 
 	end
 
 % Otherwise, if an error occurred, a connection was not successful
@@ -227,4 +196,4 @@ catch
 end
 
 % Clear temporary variables
-clear i j r k j;
+clear i j r;

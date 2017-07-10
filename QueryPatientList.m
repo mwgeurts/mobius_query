@@ -77,22 +77,6 @@ if exist('server', 'var') == 0 || isempty(server) || ...
     end 
 end
 
-% Add jsonlab folder to search path
-addpath('./jsonlab');
-
-% Check if MATLAB can find loadjson
-if exist('loadjson', 'file') ~= 2
-    
-    % If not, throw an error
-    if exist('Event', 'file') == 2
-        Event(['The jsonlab/ submodule is missing. Download it from the ', ...
-            'MathWorks.com website'], 'ERROR');
-    else
-        error(['The jsonlab/ submodule is missing. Download it from the ', ...
-            'MathWorks.com website']);
-    end
-end
-
 % Attempt to connect to Mobius3D server
 try
     
@@ -100,12 +84,9 @@ try
     % patients from Mobius3D
     r = session.get(['http://', server, ...
         '/_plan/list?sort=date&descending=1&limit=999999']);
-
-    % Retrieve the JSON results
-    j = r.json();
     
     % Execute loadjson() to convert the JSON list to a MATLAB structure
-    s = loadjson(char(py.json.dumps(j)));
+    s = jsondecode(char(r.text));
     
     % Retrieve cell array
     if isfield(s, 'patients')
@@ -140,4 +121,4 @@ catch
 end
 
 % Clear temporary variables
-clear i r j s;
+clear i r s;

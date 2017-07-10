@@ -139,22 +139,6 @@ elseif ~isempty(id) && ~isempty(date)
     end
 end
 
-% Add jsonlab folder to search path
-addpath('./jsonlab');
-
-% Check if MATLAB can find loadjson
-if exist('loadjson', 'file') ~= 2
-    
-    % If not, throw an error
-    if exist('Event', 'file') == 2
-        Event(['The jsonlab/ submodule is missing. Download it from the ', ...
-            'MathWorks.com website'], 'ERROR');
-    else
-        error(['The jsonlab/ submodule is missing. Download it from the ', ...
-            'MathWorks.com website']);
-    end
-end
-
 % If a patient list was not provided, query it
 if isempty(list)
     
@@ -207,32 +191,31 @@ end
 for i = 1:length(list)
     
     % Check if list item is empty, and skip if so
-    if isempty(list{i}) || ~isstruct(list{i}) || ...
-            ~isfield(list{i}, 'patientId')
+    if isempty(list(i).patientId)
         continue;
     end
     
     % If patient ID matches
-    if strcmp(char(list{i}.patientId), id)
+    if strcmp(char(list(i).patientId), id)
         
         % If a plan name or date was provided
         if ~isempty(plan) || ~isempty(date)
 
             % Loop over every plan in the patient
-            for j = 1:length(list{i}.plans)
+            for j = 1:length(list(i).plans)
 
                 % Skip if there aren't results (results will be empty)
-                if isempty(list{i}.plans{j}.results)
+                if isempty(list(i).plans(j).results)
                     continue
                 end
 
                 % Calculate MATLAB datenum of plan
-                d = list{i}.plans{j}.created_timestamp / 86400 ...
+                d = list(i).plans(j).created_timestamp / 86400 ...
                     + datenum(1970,1,1,utc,0,0);
 
                 % If this plan matches the plan check name (in the notes 
                 % field), or if the plan date is within the allowed range
-                if (~isempty(plan) && strcmpi(char(list{i}.plans{j}.notes), ...
+                if (~isempty(plan) && strcmpi(char(list(i).plans(j).notes), ...
                         plan)) || (~isempty(date) && d > (date - range) ...
                         && d < (date + range))
 
@@ -243,17 +226,30 @@ for i = 1:length(list)
 
                     % Retrieve JSON plan information
                     r = session.get(['http://', server, '/check/details/', ...
-                        char(list{i}.plans{j}.request_cid), ...
+                        char(list(i).plans(j).request_cid), ...
                         '?format=json']);
-                    data = r.json();
-
-                    % Only get data for M3D v1 plans and later
-                    if data{'version'}{1} < 1
-                        continue
+                    
+                    % Remove long couchable keys, as they cause errors
+                    t = char(r.text);
+                    t = regexprep(t, ['couchable:key:tuple:(''dvhLimit_result'', ', ...
+                        '''roi_num2dvh_dict'', '], 'couchable');
+                    t = regexprep(t, ['couchable:key:tuple:(''strayVoxel_result'', ', ...
+                        '''roi_num2strayVoxel_dict'', '], 'couchable');
+                    t = regexprep(t, ['couchable:key:tuple:(''targetCoverage_result'', ', ...
+                        '''roi_num2targetCoverage_dict'', '], 'couchable');
+                    
+                    % Convert the JSON list to a MATLAB structure
+                    try
+                        check = jsondecode(t);
+                    catch
+                        if exist('Event', 'file') == 2
+                            Event(['JSON decode error occurred for plan cid ', ...
+                                list(i).plans(j).request_cid], 'ERROR');
+                        else
+                            error(['JSON decode error occurred for plan cid ', ...
+                                list(i).plans(j).request_cid]);
+                        end
                     end
-
-                    % Retrieve JSON plan data
-                    check = loadjson(char(py.json.dumps(data)));
 
                     % End loop, as matching plan check was found
                     break;
@@ -272,7 +268,7 @@ if exist('check', 'var') == 1 && ~isempty(fieldnames(check))
     % Log success
     if exist('Event', 'file') == 2
         Event(sprintf('JSON plan check was found, cid %s, in %0.3f seconds', ...
-            char(list{i}.plans{j}.request_cid), toc));
+            char(list(i).plans(j).request_cid), toc));
     end
 
 % Otherwise the field is empty
@@ -290,4 +286,4 @@ else
 end
 
 % Clear temporary variables
-clear date id list range server utc data i j s r d;
+clear date id list range server utc i j r t d;

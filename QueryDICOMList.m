@@ -1,4 +1,4 @@
-function [session, ulist] = QueryDICOMList(varargin)
+function [session, list] = QueryDICOMList(varargin)
 % QueryDICOMList returns the list of DICOM patient data stored in Mobius3D.
 % The function requires an active Python session, created from
 % EstablishConnection, and a server name. It will then query the Mobius3D
@@ -27,7 +27,7 @@ function [session, ulist] = QueryDICOMList(varargin)
 %   
 %   % Loop through data, printing the patient ID
 %   for i = 1:length(list)
-%       fprintf('%s\n', list{i}.patient_id);
+%       fprintf('%s\n', list(i).patient_id);
 %   end
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
@@ -77,22 +77,6 @@ if exist('server', 'var') == 0 || isempty(server) || ...
     end 
 end
 
-% Add jsonlab folder to search path
-addpath('./jsonlab');
-
-% Check if MATLAB can find loadjson
-if exist('loadjson', 'file') ~= 2
-    
-    % If not, throw an error
-    if exist('Event', 'file') == 2
-        Event(['The jsonlab/ submodule is missing. Download it from the ', ...
-            'MathWorks.com website'], 'ERROR');
-    else
-        error(['The jsonlab/ submodule is missing. Download it from the ', ...
-            'MathWorks.com website']);
-    end
-end
-
 % Attempt to connect to Mobius3D server
 try
     
@@ -105,19 +89,12 @@ try
     % DICOM patients from Mobius3D
     r = session.get(['http://', server, '/_dicom/patients']);
 
-    % Retrieve the JSON results
-    j = r.json();
+    % Convert to MATLAB structure
+    s = jsondecode(char(r.text));
     
-    % Execute loadjson() to convert the JSON list to a MATLAB structure
-    s = loadjson(char(py.json.dumps(j)));
-    
-    % Retrieve cell array
-    if isfield(s, 'patients')
-        list = s.patients;
-    
-    % If the field does not exist, an error may have occured
-    else
-        
+    % If the return arg was empty
+    if ~isfield(s, 'patients')
+       
         % Log an error
         if exist('Event', 'file') == 2
             Event('An error occurred returning the DICOM list', 'ERROR');
@@ -126,35 +103,17 @@ try
         end
     end
     
-    % Initialize temporary cell array of patient IDs
-    t = cell(length(list), 1);
-    
-    % Loop through list
-    for i = 1:length(list)
-        
-        % Store patient ID
-        t{i} = list{i}.patient_id;
-    end
-    
     % Find indices of unique patient IDs
-    [~, indices, ~] = unique(t);
+    [~, i, ~] = unique({s.patients(:).patient_id});
     
     % Create unique list
-    ulist = cell(length(indices), 1);
-    
-    % Store unique values
-    for i = 1:length(indices)
-        
-        % Store patient ID, name, and CSS ID
-        ulist{i}.patient_id = list{indices(i)}.patient_id;
-        ulist{i}.patient_name = list{indices(i)}.patient_name;
-        ulist{i}.css_id = list{indices(i)}.css_id;
-    end
+    list = struct('patient_id', {s.patients(i).patient_id}, 'patient_name', ...
+        {s.patients(i).patient_name}, 'css_id', {s.patients(i).css_id});
     
     % If the above function calls work, log a success message
     if exist('Event', 'file') == 2
         Event(sprintf(['DICOM list retrieved successfully containing %i ', ...
-            'entries in %0.3f seconds'], length(ulist), toc));
+            'entries in %0.3f seconds'], length(list), toc));
     end
 
 % Otherwise, if an error occurred, a connection was not successful
@@ -169,4 +128,4 @@ catch
 end
 
 % Clear temporary variables
-clear r j s i k t indices list;
+clear r s i;

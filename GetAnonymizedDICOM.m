@@ -117,27 +117,11 @@ if exist('folder', 'var') == 0 || isempty(folder) || ...
     end 
 end
 
-% Add jsonlab folder to search path
-addpath('./jsonlab');
-
-% Check if MATLAB can find loadjson
-if exist('loadjson', 'file') ~= 2
-    
-    % If not, throw an error
-    if exist('Event', 'file') == 2
-        Event(['The jsonlab/ submodule is missing. Download it from the ', ...
-            'MathWorks.com website'], 'ERROR');
-    else
-        error(['The jsonlab/ submodule is missing. Download it from the ', ...
-            'MathWorks.com website']);
-    end
-end
-
 % Loop through each list item
 for i = 1:length(list)
 
     % If a patient_id field does not exist, warn the user
-    if ~isfield(list{i}, 'patient_id')
+    if ~isfield(list(i), 'patient_id')
 
         % Throw a warning
         if exist('Event', 'file') == 2
@@ -156,10 +140,10 @@ for i = 1:length(list)
     if exist('Event', 'file') == 2
         if isfield(list{i}, 'patient_name')
             Event(['Creating anonymized compressed file for ', ...
-                list{i}.patient_name]);
+                list(i).patient_name]);
         else
             Event(['Creating anonymized compressed file for ', ...
-                list{i}.patient_id]);
+                list(i).patient_id]);
         end
     end
 
@@ -167,32 +151,29 @@ for i = 1:length(list)
     % DICOM anonymization function in Mobius3D
     try
         r = session.get(['http://', server, '/_dicom/anon/create/', ...
-            list{i}.patient_id]);
+            list(i).patient_id]);
+        
+        % Convert the JSON list to a MATLAB structure
+        s = jsondecode(char(r.text));
+        
+        % Store the returned file_str minus the extension
+        list{i}.folder = s.file_str(1:end-4);
     catch
 
         % If get fails, throw a warning
         if exist('Event', 'file') == 2
             Event(sprintf(['Mobius3D could not generate DICOM files for ', ...
-                '%s, or the server is unavailable.'], list{i}.patient_id), ...
+                '%s, or the server is unavailable.'], list(i).patient_id), ...
                 'WARN');
         else
             warning(['Mobius3D could not generate DICOM files for ', ...
-                '%s, or the server is unavailable.'], list{i}.patient_id);
+                '%s, or the server is unavailable.'], list(i).patient_id);
         end
 
         % Skip to the next list item
         continue;
     end
-
-    % Retrieve the JSON results
-    j = r.json();
-
-    % Execute loadjson() to convert the JSON list to a MATLAB structure
-    s = loadjson(char(py.json.dumps(j)));
-
-    % Store the returned file_str
-    list{i}.folder = s.file_str(1:end-4);
-
+    
     % Once a response is returned, the anonymized .zip file is ready to
     % be downloaded to a temporary file
     try
@@ -242,7 +223,7 @@ for i = 1:length(list)
         end
 
         % Return an empty list of files
-        list{i}.files = cell(0);
+        list(i).files = cell(0);
         
         % Skip to the next list item
         continue;
@@ -252,6 +233,7 @@ for i = 1:length(list)
     try
         delete(fullfile(tempdir, s.file_str));
     catch
+        
         % If the above code fails, throw a warning
         if exist('Event', 'file') == 2
             Event('Compressed file could not be deleted', 'WARN');
@@ -268,4 +250,4 @@ if exist('Event', 'file') == 2
 end
 
 % Clear temporary variables
-clear r i j s t f;
+clear r i s t f;

@@ -12,9 +12,8 @@ function [session, rtplan] = GetRTPlan(varargin)
 %
 % The following variables are returned upon succesful completion:
 %   session: Python session object
-%   rtplan: structure containing the RT plan, with DICOM field names in the
-%       format GXXXXEXXXX, where GXXXX and EXXXX refer to the Group and
-%       Element DICOM tags, respectively
+%   rtplan: structure containing the RT plan, with DICOM field names
+%       defined using the format of the default MATLAB DICOM dictionary
 %
 % Below is an example of how the function is used:
 %
@@ -27,7 +26,7 @@ function [session, rtplan] = GetRTPlan(varargin)
 %       session, 'sopinst', 'plansopuid');
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
-% Copyright (C) 2016 University of Wisconsin Board of Regents
+% Copyright (C) 2017 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  
@@ -96,22 +95,6 @@ if isempty(sop)
     end 
 end
 
-% Add jsonlab folder to search path
-addpath('./jsonlab');
-
-% Check if MATLAB can find loadjson
-if exist('loadjson', 'file') ~= 2
-    
-    % If not, throw an error
-    if exist('Event', 'file') == 2
-        Event(['The jsonlab/ submodule is missing. Download it from the ', ...
-            'MathWorks.com website'], 'ERROR');
-    else
-        error(['The jsonlab/ submodule is missing. Download it from the ', ...
-            'MathWorks.com website']);
-    end
-end
-
 % Log start
 if exist('Event', 'file') == 2
     Event(sprintf('Retrieving RT Plan UID %s', sop));
@@ -146,13 +129,26 @@ catch
     end
 end
 
-% If a valid RT plan object was returned
-if length(char(py.json.dumps(r.json()))) > 2
+% Store text
+t = char(r.text);
 
-    % Replace all tag names with their Group/Element codes, using the
-    % format GXXXXEXXXX, and convert to MATLAB structure
-    rtplan = loadjson(regexprep(char(py.json.dumps(r.json())), ...
-        '"\(([0-9a-z]+), ([0-9a-z]+)\)[^"]+"', '"G$1E$2"'));
+% If a valid RT plan object was returned
+if length(t) > 2
+
+    % Search for tag names
+    [tokens, matches] = regexp(t, '"\(([0-9a-z]+), ([0-9a-z]+)\)[^"]+":', ...
+        'tokens', 'match');
+    
+    % Loop through each tag
+    for i = 1:length(tokens)
+        
+        % Replace the matched text with the dicom tag
+        t = replace(t, matches{i}, ['"', dicomlookup(tokens{i}{1}, ...
+            tokens{i}{2}), '":']); 
+    end
+
+    % Convert to MATLAB structure
+    rtplan = jsondecode(t);
 else
     
     % Return empty rtplan
@@ -167,4 +163,4 @@ else
 end
 
 % Clear temporary variables
-clear sop r i;
+clear sop r t i;

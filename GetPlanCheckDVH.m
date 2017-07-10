@@ -63,7 +63,7 @@ for i = 1:2:nargin
     
     % Store plan check CID
     if strcmpi(varargin{i}, 'plan') && isfield(varargin{i+1}, 'request')
-        cid = varargin{i+1}.request.x0x5F_id;
+        cid = varargin{i+1}.request.x_id;
     elseif strcmpi(varargin{i}, 'cid')
         cid = varargin{i+1};
     end
@@ -96,22 +96,6 @@ if isempty(cid)
     end 
 end
 
-% Add jsonlab folder to search path
-addpath('./jsonlab');
-
-% Check if MATLAB can find loadjson
-if exist('loadjson', 'file') ~= 2
-    
-    % If not, throw an error
-    if exist('Event', 'file') == 2
-        Event(['The jsonlab/ submodule is missing. Download it from the ', ...
-            'MathWorks.com website'], 'ERROR');
-    else
-        error(['The jsonlab/ submodule is missing. Download it from the ', ...
-            'MathWorks.com website']);
-    end
-end
-
 % Log start
 if exist('Event', 'file') == 2
     Event(sprintf('Retrieving DVH for plan check request CID %s', cid));
@@ -131,15 +115,6 @@ try
             double(r.elapsed.microseconds)/1e6));
     end
 
-    % Log parsing
-    if exist('Event', 'file') == 2
-        Event('Parsing JSON into MATLAB structure return argument');
-    end
-
-    % Convert JSON data to MATLAB structure
-    struct = loadjson(char(py.json.dumps(r.json())));
-    dvh = struct.data;
-
 % Otherwise, if an error occurred, a connection was not successful
 catch
     
@@ -151,5 +126,30 @@ catch
     end
 end
 
+% Attempt to parse results
+try
+    
+    % Log parsing
+    if exist('Event', 'file') == 2
+        Event('Parsing JSON into MATLAB structure return argument');
+    end
+
+    % Convert the JSON list to a MATLAB structure
+    s = jsondecode(char(r.text));   
+    dvh = s.data;
+
+% Otherwise, if an error occurred, a connection was not successful
+catch
+    
+    % Log an error
+    if exist('Event', 'file') == 2
+        Event(['Could not parse the return data from http://', server, ...
+            '/check/attachment/', cid, '/dvhChart_data.json'], 'ERROR');
+    else
+        error(['Could not parse the return data from http://', server, ...
+            '/check/attachment/', cid, '/dvhChart_data.json']);
+    end
+end
+    
 % Clear temporary variables
-clear cid r struct;
+clear cid r s;
