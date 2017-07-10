@@ -131,10 +131,7 @@ end
 % If a patient list was not provided, query it
 if isempty(list)
     
-    % Attempt to connect to Mobius3D server
-    try
-
-        % Execute get function of Python session object to retrieve list of 
+    % Execute get function of Python session object to retrieve list of 
     % patients from Mobius3D
     r = session.session.get(['http://', session.server, ...
         '/_plan/list?sort=date&descending=1&limit=999999']);
