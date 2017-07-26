@@ -1,4 +1,4 @@
-function results = QueryPlanChecks(session, varargin)
+function [session, results] = QueryPlanChecks(session, varargin)
 % QueryPlanChecks searches through the Mobius3D plan check list
 % returning key results in a structure for plans that match the provided
 % search criteria. For example, one can search for all plans matching a
